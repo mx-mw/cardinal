@@ -3,12 +3,12 @@ pub mod error;
 mod component;
 mod scene;
 
-use scene::Scene;
+pub use scene::{Scene, scene};
 use winit::{
 	event::{WindowEvent, self},
 	event_loop::{EventLoop, ControlFlow},
 };
-use component::Component;
+pub use component::{Component, ComponentRequirements};
 use std::{
 	future::Future,
 	time::{Instant, Duration}
@@ -17,6 +17,7 @@ use error::*;
 
 pub type CardinalResult<T> = Result<T, CardinalError>;
 
+#[derive(Debug)]
 pub enum CardinalError {
     GFX(GFXError),
     State(StateError)
@@ -43,11 +44,7 @@ impl<'a> Spawner<'a> {
     }
 }
 
-pub trait BaseMethods<T: Clone>: 'static + Sized {
-	
-}
-
-struct Setup {
+pub struct Setup {
     window: winit::window::Window,
     event_loop: EventLoop<()>,
     instance: wgpu::Instance,
@@ -55,10 +52,10 @@ struct Setup {
     surface: wgpu::Surface,
     adapter: wgpu::Adapter,
     device: wgpu::Device,
-    queue: wgpu::Queue,
+    queue: wgpu::Queue
 }
 
-async fn setup<C: Component<()> + 'static>(title: &str) -> Setup {
+pub async fn setup(title: &str) -> Setup {
     let event_loop = EventLoop::new();
     let mut builder = winit::window::WindowBuilder::new();
     builder = builder.with_title(title);
@@ -78,11 +75,11 @@ async fn setup<C: Component<()> + 'static>(title: &str) -> Setup {
             .await
             .expect("No suitable GPU adapters found on the system!");
 
-    let optional_features = C::optional_features();
-    let required_features = C::required_features();
+    let optional_features = Scene::optional_features();
+    let required_features = Scene::required_features();
     let adapter_features = adapter.features();
 
-    let required_downlevel_capabilities = C::required_downlevel_capabilities();
+    let required_downlevel_capabilities = Scene::required_downlevel_capabilities();
     let downlevel_capabilities = adapter.get_downlevel_properties();
     assert!(
         downlevel_capabilities.shader_model >= required_downlevel_capabilities.shader_model,
@@ -98,7 +95,7 @@ async fn setup<C: Component<()> + 'static>(title: &str) -> Setup {
     );
 
     // Make sure we use the texture resolution limits from the adapter, so we can support images the size of the surface.
-    let needed_limits = C::required_limits().using_resolution(adapter.limits());
+    let needed_limits = Scene::required_limits().using_resolution(adapter.limits());
 
     let trace_dir = std::env::var("WGPU_TRACE");
     let (device, queue) = adapter
@@ -125,7 +122,7 @@ async fn setup<C: Component<()> + 'static>(title: &str) -> Setup {
     }
 }
 
-fn start<R: Component<()>>(
+pub fn start(
     Setup {
         window,
         event_loop,
@@ -136,6 +133,7 @@ fn start<R: Component<()>>(
         device,
         queue,
     }: Setup,
+	layout: Vec<Box<dyn Component>>
 ) -> CardinalResult<()> {
     let spawner = Spawner::new();
     let mut config = wgpu::SurfaceConfiguration {
@@ -146,8 +144,8 @@ fn start<R: Component<()>>(
         present_mode: wgpu::PresentMode::Mailbox,
     };
     surface.configure(&device, &config);
-
-    let mut scene = Scene::<R>::init(&config, &adapter, &device, &queue, &())?;
+	let mut scene = scene(layout);
+	scene.init(&config, &adapter, &device, &queue)?;
 
     #[cfg(not(target_arch = "wasm32"))]
     let mut last_update_inst = Instant::now();
@@ -201,7 +199,7 @@ fn start<R: Component<()>>(
             } => {
                 config.width = size.width.max(1);
                 config.height = size.height.max(1);
-                scene.resize(&config, &device, &queue);
+                scene.resize(&config, &device, &queue).unwrap();
                 surface.configure(&device, &config);
             }
             event::Event::WindowEvent { event, .. } => match event {

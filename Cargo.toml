@@ -9,4 +9,4 @@ edition = "2021"
 async-executor = "1.4.1"
 wgpu = "0.12.0"
 winit = "0.26.1"
-specs = { version = "0.16.1", features = ["specs-derive"] }
+tokio = { version = "1", features = ["full"] }
