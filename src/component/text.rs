@@ -4,10 +4,10 @@ pub struct Text {
 	text: String
 }
 
-pub fn text(text: &'static str) -> Text {
-	Text {
+pub fn text(text: &'static str) -> Box<dyn Component> {
+	Box::new(Text {
 		text: text.into()
-	}
+	})
 }
 
 impl Component for Text {

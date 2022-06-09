@@ -1,11 +1,9 @@
-use cardinal::{Scene, scene, Component, component::text::text, start, setup, Spawner};
+use cardinal::{CardinalResult, component::text::text, start};
 
 #[tokio::main]
-async fn main() {
-	let s = Spawner::new();
-	let mut scene = vec![
-
+async fn main() -> CardinalResult<()> {
+	let scene = vec![
+		text("asdf")
 	];
-	let setup = setup("test").await;
-	start(setup, scene).unwrap();
+	start("Testing window", scene).await
 }

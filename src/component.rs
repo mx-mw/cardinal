@@ -28,6 +28,8 @@ pub trait Component {
         _: &wgpu::Queue,
         _: &Spawner,
     ) -> CardinalResult<()> {Ok(())}
+
+	fn shader(&mut self) {}
 }
 
 pub trait ComponentRequirements {
